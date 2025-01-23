@@ -6,7 +6,7 @@ module.exports = {
     description: 'List all available commands',
     execute(api, event) {
         const commandFiles = fs.readdirSync('./cmds').filter(file => file.endsWith('.js'));
-        let message = 'C ° O ° M ° M ° A ° N ° D ° S\n\n';
+        let message = '✅Voici les commandes disponibles✅\n\n';
 
         commandFiles.forEach(file => {
             const command = require(`./${file}`);
