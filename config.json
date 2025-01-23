@@ -1,7 +1,7 @@
 {
-    "botOwnerName": "",
+    "botOwnerName": "Bot",
     "adminID": "",
     "botOwner": "https://fb.com/carljohn.villavito",
-    "prefix": "@",
+    "prefix": "-",
     "port": 10000
 }
