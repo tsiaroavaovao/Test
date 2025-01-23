@@ -1,33 +1,35 @@
 const fs = require('fs');
-const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 
 module.exports = {
-    name: 'help',
-    description: 'List all available commands',
-    execute(api, event, args) {
-        const commandFiles = fs.readdirSync('./cmds').filter(file => file.endsWith('.js'));
-        const commandsPerPage = 8;
-        const totalPages = Math.ceil(commandFiles.length / commandsPerPage);
-        
-        let page = 1;
-        if (args.length > 0 && !isNaN(args[0])) {
-            page = Math.max(1, Math.min(parseInt(args[0]), totalPages));
-        }
+    name: 'help',
+    description: 'List all available commands',
+    execute(api, event, args) {
+        const commandFiles = fs.readdirSync('./cmds').filter(file => file.endsWith('.js'));
+        const commandsPerPage = 8; 
+        let page = parseInt(args[0]) || 1; // Obtenir le numéro de page ou défaut à 1
 
-        let message = `✅Voici les commandes disponibles✅\n\n`;
-        
-        const start = (page - 1) * commandsPerPage;
-        const end = start + commandsPerPage;
-        
-        commandFiles.slice(start, end).forEach((file, index) => {
-            const command = require(`./cmds/${file}`);
-            message += `${start + index + 1}- ${command.name}\n`;
-            message += `\tDescription : ${command.description}\n\n`;
-        });
-        
-        message += `Page ${page}/${totalPages}\n`;
-        message += `Utilisez -help <numéro de page> pour naviguer.`;
-        
-        api.sendMessage(message, event.threadID);
-    }
+        // Calcul du nombre total de pages
+        const totalPages = Math.ceil(commandFiles.length / commandsPerPage);
+        if (page < 1 || page > totalPages) {
+            return api.sendMessage(`❌ Page invalide. Choisissez entre 1 et ${totalPages}.`, event.threadID);
+        }
+
+        let message = `✅Voici les commandes disponibles✅ (Page ${page}/${totalPages})\n\n`;
+
+        // Extraire les commandes pour la page demandée
+        const startIndex = (page - 1) * commandsPerPage;
+        const endIndex = startIndex + commandsPerPage;
+        const commandsToShow = commandFiles.slice(startIndex, endIndex);
+
+        commandsToShow.forEach((file, index) => {
+            const command = require(`./cmds/${file}`);
+            message += `${startIndex + index + 1}- ${command.name}\n`;
+            message += `   Description : ${command.description}\n\n`;
+        });
+
+        // Ajout des instructions pour naviguer entre les pages
+        message += `Utilisez -help <numéro de page> pour voir d'autres commandes.`;
+
+        api.sendMessage(message, event.threadID);
+    }
 };
