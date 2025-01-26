@@ -60,7 +60,7 @@ login(loginCredentials, (err, api) => {
                 prompt: message,
                 customId: event.senderID
             }).then(response => {
-                api.sendMessage(response.data.message, event.threadID);
+                api.sendMessage("🇲🇬 **BOT MADA** 🇲🇬\n\n" + response.data.message, event.threadID);
             }).catch(error => {
                 console.error("Erreur API:", error);
             });
@@ -88,7 +88,7 @@ login(loginCredentials, (err, api) => {
                         customId: event.senderID
                     });
                 }).then(response => {
-                    api.sendMessage(response.data.message, event.threadID);
+                    api.sendMessage("🇲🇬 **BOT MADA** 🇲🇬\n\n" + response.data.message, event.threadID);
                 }).catch(error => {
                     console.error("Erreur API OCR:", error);
                 });
