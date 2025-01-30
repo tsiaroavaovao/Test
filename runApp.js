@@ -84,7 +84,13 @@ login(loginCredentials, (err, api) => {
             return;
         }
 
-        // Si une commande est active, elle répond en continu
+        // Exception spéciale pour "help"
+        if (commandName === "help" && commands["help"]) {
+            commands["help"].execute(api, event, args);
+            return; // NE REND PAS LA COMMANDE ACTIVE
+        }
+
+        // Si une autre commande est active, elle répond en continu
         if (activeCommand && commands[activeCommand]) {
             commands[activeCommand].execute(api, event, args);
             return;
@@ -128,4 +134,3 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
     console.log(`Serveur en ligne sur http://localhost:${port}`);
 });
-    
