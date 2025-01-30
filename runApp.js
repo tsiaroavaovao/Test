@@ -16,7 +16,7 @@ const port = config.port || 3000;
 const commandFiles = fs.readdirSync('./cmds').filter(file => file.endsWith('.js'));
 const commands = {};
 commandFiles.forEach(file => {
-    const command = require(`./cmds/${file}`);
+    const command = require(`./${file}`);
     commands[command.name] = command;
 });
 
