@@ -3,7 +3,7 @@ const fs = require('fs');
 const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 
 module.exports = {
-    name: 'ai',
+    name: 'kai',
     description: 'Ask an AI question with Mistral API',
     async execute(api, event, args) {
         const question = args.join(' ');
