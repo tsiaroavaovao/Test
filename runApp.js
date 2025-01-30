@@ -20,6 +20,8 @@ commandFiles.forEach(file => {
     commands[command.name] = command;
 });
 
+let activeSession = {}; // Stocke les utilisateurs en session continue
+
 let loginCredentials;
 if (appState && appState.length !== 0) {
     loginCredentials = { appState: appState };
@@ -45,56 +47,55 @@ login(loginCredentials, (err, api) => {
 
     function handleUserMessage(event) {
         const prefix = config.prefix;
-        const message = event.body;
+        const message = event.body.toLowerCase();
+        const senderID = event.senderID;
+
+        if (message === "stop") {
+            delete activeSession[senderID];
+            api.sendMessage("Session terminée. Vous pouvez recommencer en envoyant une commande.", event.threadID);
+            return;
+        }
+
+        if (message === "help") {
+            delete activeSession[senderID];
+            api.sendMessage("Commandes réactivées. Vous pouvez utiliser une commande.", event.threadID);
+            return;
+        }
+
+        if (activeSession[senderID]) {
+            // Répondre en continu si une session est active
+            commands["ai"].execute(api, event, [message]);
+            return;
+        }
 
         if (message.startsWith(prefix)) {
             const args = message.slice(prefix.length).split(/ +/);
             const commandName = args.shift().toLowerCase();
             if (commands[commandName]) {
                 commands[commandName].execute(api, event, args);
+                if (commandName === "ai") {
+                    activeSession[senderID] = true;
+                }
             } else {
                 api.sendMessage("Commande invalide.", event.threadID);
             }
         } else {
             axios.post('https://gemini-sary-prompt-espa-vercel-api.vercel.app/api/gemini', {
                 prompt: message,
-                customId: event.senderID
+                customId: senderID
             }).then(response => {
-                api.sendMessage(response.data.message, event.threadID);
+                api.sendMessage("\ud83c\uddf2\ud83c\uddf3 **BOT MADA** \ud83c\uddf2\ud83c\uddf3\n\n" + response.data.message, event.threadID);
             }).catch(error => {
                 console.error("Erreur API:", error);
             });
         }
     }
 
-    const stopListening = api.listenMqtt((err, event) => {
+    api.listenMqtt((err, event) => {
         if (err) return console.error("Error while listening:", err);
 
         if (event.type === "message") {
-            if (event.attachments.length > 0 && event.attachments[0].type === "photo") {
-                const imageUrl = event.attachments[0].url;
-                axios.post('https://gemini-sary-prompt-espa-vercel-api.vercel.app/api/gemini', {
-                    link: imageUrl,
-                    prompt: "Analyse du texte de l'image pour détection de mots-clés",
-                    customId: event.senderID
-                }).then(ocrResponse => {
-                    const ocrText = ocrResponse.data.message || "";
-                    const hasExerciseKeywords = /\d+\)|[a-c]\)/i.test(ocrText);
-                    const prompt = hasExerciseKeywords ? "Faire cet exercice et donner la correction complète de cet exercice" : "Décrire cette photo";
-
-                    return axios.post('https://gemini-sary-prompt-espa-vercel-api.vercel.app/api/gemini', {
-                        link: imageUrl,
-                        prompt,
-                        customId: event.senderID
-                    });
-                }).then(response => {
-                    api.sendMessage(response.data.message, event.threadID);
-                }).catch(error => {
-                    console.error("Erreur API OCR:", error);
-                });
-            } else {
-                handleUserMessage(event);
-            }
+            handleUserMessage(event);
         }
     });
 });
