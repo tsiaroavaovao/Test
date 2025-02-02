@@ -16,7 +16,7 @@ module.exports = {
             return;
         }
 
-        api.sendMessage("⏳ Génération en cours...", event.threadID, event.messageID);
+        api.sendMessage("📲💫 Patientez, la réponse arrive… 💫📲", event.threadID, event.messageID);
 
         try {
             const response = await axios.get(`https://api.zetsu.xyz/api/mixtral-8b?q=${encodeURIComponent(question)}`, {
