@@ -18,7 +18,7 @@ module.exports = {
         try {
             const response = await axios.get(`https://ajiro.gleeze.com/api/ai?model=grok-2&system=You are a LLM called groq invented by elon musk&question=${encodeURIComponent(question)}`);
             if (response.data.success) {
-                api.sendMessage(`{}=====GROK-2====={}\n\n` + response.data.response, event.threadID, event.messageID);
+                api.sendMessage(`✅🙏 BOT D'ÉLÈVE 🙏✅\n\n` + response.data.response, event.threadID, event.messageID);
             } else {
                 api.sendMessage("There was an error processing your request. Please try again later.", event.threadID, event.messageID);
             }
