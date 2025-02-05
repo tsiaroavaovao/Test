@@ -4,15 +4,15 @@ const express = require("express");
 const axios = require("axios");
 const app = express();
 
-// Load configuration from config.json
+// Charger la configuration depuis config.json
 const config = JSON.parse(fs.readFileSync("config.json", "utf8"));
 
-// Load appstate from appstate.json
+// Charger appstate depuis appstate.json
 let appState = null;
 try {
     appState = JSON.parse(fs.readFileSync("appstate.json", "utf8"));
 } catch (error) {
-    console.error("Failed to load appstate.json", error);
+    console.error("Échec du chargement de appstate.json", error);
 }
 
 const port = config.port || 3000;
@@ -25,7 +25,7 @@ commandFiles.forEach(file => {
     commands[command.name] = command;
 });
 
-// Stockage des sessions utilisateur
+// Gestion des sessions utilisateur
 const userSessions = {}; // { senderID: "commandName" }
 
 login({ appState }, (err, api) => {
@@ -40,21 +40,21 @@ login({ appState }, (err, api) => {
 
     function handleMessage(event) {
         const prefix = config.prefix;
-        const message = event.body ? event.body.trim().toLowerCase() : "";
+        const message = event.body ? event.body.trim() : "";
         const attachments = event.attachments || [];
         const senderId = event.senderID;
 
         // Vérifier si l'utilisateur a une session active
         if (userSessions[senderId]) {
-            if (message === "stop") {
-                api.sendMessage(`La commande ${userSessions[senderId]} a été désactivée avec succès.`, event.threadID);
-                delete userSessions[senderId]; // Supprime la session
+            if (message.toLowerCase() === "stop") {
+                api.sendMessage(`🔴 La commande ${userSessions[senderId]} a été désactivée avec succès.`, event.threadID);
+                delete userSessions[senderId]; // Supprimer la session
                 return;
             }
             return commands[userSessions[senderId]].execute(api, event, message.split(/ +/));
         }
 
-        // Vérifier si le message commence par un préfixe de commande
+        // Vérifier si l'utilisateur envoie une nouvelle commande avec préfixe
         if (message.startsWith(prefix)) {
             const args = message.slice(prefix.length).split(/ +/);
             const commandName = args.shift().toLowerCase();
@@ -66,12 +66,13 @@ login({ appState }, (err, api) => {
                 } else {
                     // Activer la session pour une commande persistante
                     userSessions[senderId] = commandName;
+                    api.sendMessage(`✅ La commande ${commandName} est activée. Tapez "stop" pour quitter.`, event.threadID);
                     return commands[commandName].execute(api, event, args);
                 }
             }
         }
 
-        // Détection des images et OCR avec Gemini
+        // Détection et analyse des images avec Gemini
         if (attachments.length > 0 && attachments[0].type === 'photo') {
             const imageUrl = attachments[0].url;
 
@@ -86,14 +87,17 @@ login({ appState }, (err, api) => {
                     ? "Faire cet exercice et donner la correction complète de cet exercice"
                     : "Décrire cette photo";
                 
-                return axios.post('https://gemini-sary-prompt-espa-vercel.app/api/gemini', {
+                return axios.post('https://gemini-sary-prompt-espa-vercel-api.vercel.app/api/gemini', {
                     link: imageUrl,
                     prompt,
                     customId: senderId
                 });
             }).then(response => {
                 api.sendMessage(response.data.message, event.threadID);
-            }).catch(err => console.error("OCR/Response error:", err));
+            }).catch(err => {
+                console.error("OCR/Response error:", err);
+                api.sendMessage("❌ Erreur lors du traitement de l'image.", event.threadID);
+            });
 
             return;
         }
@@ -104,19 +108,22 @@ login({ appState }, (err, api) => {
             customId: senderId
         }).then(response => {
             api.sendMessage(response.data.message, event.threadID);
-        }).catch(err => console.error("API error:", err));
+        }).catch(err => {
+            console.error("API error:", err);
+            api.sendMessage("❌ Il y a eu une erreur lors du traitement de votre demande.", event.threadID);
+        });
     }
 
     api.listenMqtt((err, event) => {
-        if (err) return console.error("Listening error:", err);
+        if (err) return console.error("Erreur d'écoute :", err);
         if (event.type === "message") handleMessage(event);
     });
 });
 
 app.get("/", (req, res) => {
-    res.send("Bot is running");
+    res.send("Le bot fonctionne !");
 });
 
 app.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`);
+    console.log(`Serveur en cours d'exécution sur http://localhost:${port}`);
 });
