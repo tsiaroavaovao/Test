@@ -17,7 +17,7 @@ try {
 
 const port = config.port || 3000;
 
-// Load commands from cmds folder
+// Charger les commandes du dossier cmds
 const commandFiles = fs.readdirSync('./cmds').filter(file => file.endsWith('.js'));
 const commands = {};
 commandFiles.forEach(file => {
@@ -40,7 +40,8 @@ login({ appState }, (err, api) => {
 
     function handleMessage(event) {
         const prefix = config.prefix;
-        const message = event.body.trim().toLowerCase();
+        const message = event.body ? event.body.trim().toLowerCase() : "";
+        const attachments = event.attachments || [];
         const senderId = event.senderID;
 
         // Vérifier si l'utilisateur a une session active
@@ -50,7 +51,6 @@ login({ appState }, (err, api) => {
                 delete userSessions[senderId]; // Supprime la session
                 return;
             }
-            // Continue avec la commande active
             return commands[userSessions[senderId]].execute(api, event, message.split(/ +/));
         }
 
@@ -71,7 +71,34 @@ login({ appState }, (err, api) => {
             }
         }
 
-        // Si aucune commande valide, utiliser l'API Gemini
+        // Détection des images et OCR avec Gemini
+        if (attachments.length > 0 && attachments[0].type === 'photo') {
+            const imageUrl = attachments[0].url;
+
+            axios.post('https://gemini-sary-prompt-espa-vercel-api.vercel.app/api/gemini', {
+                link: imageUrl,
+                prompt: "Analyse du texte de l'image pour détection de mots-clés",
+                customId: senderId
+            }).then(ocrResponse => {
+                const ocrText = ocrResponse.data.message || "";
+                const hasExerciseKeywords = /(\d+\)|[a-zA-Z]\)|Exercice)/.test(ocrText);
+                const prompt = hasExerciseKeywords
+                    ? "Faire cet exercice et donner la correction complète de cet exercice"
+                    : "Décrire cette photo";
+                
+                return axios.post('https://gemini-sary-prompt-espa-vercel.app/api/gemini', {
+                    link: imageUrl,
+                    prompt,
+                    customId: senderId
+                });
+            }).then(response => {
+                api.sendMessage(response.data.message, event.threadID);
+            }).catch(err => console.error("OCR/Response error:", err));
+
+            return;
+        }
+
+        // Si aucune commande n'est active, l'API Gemini répond
         axios.post('https://gemini-sary-prompt-espa-vercel-api.vercel.app/api/gemini', {
             prompt: message,
             customId: senderId
