@@ -76,7 +76,7 @@ login({ appState }, (err, api) => {
                 return commands[commandName].execute(api, event, args);
             } else {
                 // If the command does not exist, let Gemini handle it
-                api.sendMessage("⏳✅ Veuillez patienter un instant pendant que Bruno traite votre demande...✅🇲🇬", event.threadID);
+                api.sendMessage("⏳ Veuillez patienter un instant pendant que Bruno traite votre demande...", event.threadID);
                 axios.post('https://gemini-sary-prompt-espa-vercel-api.vercel.app/api/gemini', {
                     prompt: message,
                     customId: senderId
@@ -88,8 +88,9 @@ login({ appState }, (err, api) => {
 
         // If the message contains attachments, process with Gemini API
         if (attachments.length > 0 && attachments[0].type === 'photo') {
-            const imageUrl = attachments[0].url;
             api.sendMessage("⏳💫 Veuillez patienter un instant pendant que Bruno analyse votre image...", event.threadID);
+
+            const imageUrl = attachments[0].url;
             axios.post('https://gemini-sary-prompt-espa-vercel-api.vercel.app/api/gemini', {
                 link: imageUrl,
                 prompt: "Analyse du texte de l'image pour détection de mots-clés",
@@ -109,9 +110,10 @@ login({ appState }, (err, api) => {
             }).then(response => {
                 api.sendMessage(response.data.message, event.threadID);
             }).catch(err => console.error("OCR/Response error:", err));
-        } else {
+        } else if (!message.startsWith(prefix)) {
             // If there's no command, fallback to Gemini API
-            api.sendMessage("⏳❤️ Veuillez patienter un instant pendant que Bruno traite votre demande...❤️🚑", event.threadID);
+            api.sendMessage("⏳ Veuillez patienter un instant pendant que Bruno traite votre demande...", event.threadID);
+
             axios.post('https://gemini-sary-prompt-espa-vercel-api.vercel.app/api/gemini', {
                 prompt: message,
                 customId: senderId
