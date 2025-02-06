@@ -111,7 +111,7 @@ login({ appState }, (err, api) => {
             }).catch(err => console.error("OCR/Response error:", err));
         } else {
             // If there's no command, fallback to Gemini API
-            api.sendMessage("⏳❤️ Veuillez patienter un instant pendant que Gemini traite votre demande...❤️🚑", event.threadID);
+            api.sendMessage("⏳❤️ Veuillez patienter un instant pendant que Bruno traite votre demande...❤️🚑", event.threadID);
             axios.post('https://gemini-sary-prompt-espa-vercel-api.vercel.app/api/gemini', {
                 prompt: message,
                 customId: senderId
