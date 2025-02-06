@@ -47,7 +47,7 @@ login({ appState }, (err, api) => {
             }
 
             // Continue the conversation with Gemini
-            api.sendMessage("⏳ Continuation de la discussion en cours avec Gemini...", event.threadID);
+            api.sendMessage("⏳ Continuation de la discussion en cours avec Bruno...", event.threadID);
             return axios.post('https://gemini-sary-prompt-espa-vercel-api.vercel.app/api/gemini', {
                 prompt: message,
                 context: previousContext,
@@ -61,7 +61,7 @@ login({ appState }, (err, api) => {
 
         // If the message contains attachments, process with Gemini API
         if (attachments.length > 0 && attachments[0].type === 'photo') {
-            api.sendMessage("⏳💫 Veuillez patienter pendant que Gemini analyse votre image...", event.threadID);
+            api.sendMessage("⏳💫 Veuillez patienter pendant que Bruno analyse votre image...", event.threadID);
 
             const imageUrl = attachments[0].url;
             axios.post('https://gemini-sary-prompt-espa-vercel-api.vercel.app/api/gemini', {
@@ -87,7 +87,7 @@ login({ appState }, (err, api) => {
             }).catch(err => console.error("OCR/Response error:", err));
         } else if (!message.startsWith(prefix)) {
             // Handle general text with Gemini API
-            api.sendMessage("⏳ Veuillez patienter pendant que Gemini traite votre demande...", event.threadID);
+            api.sendMessage("⏳ Veuillez patienter pendant que Bruno traite votre demande...", event.threadID);
 
             axios.post('https://gemini-sary-prompt-espa-vercel-api.vercel.app/api/gemini', {
                 prompt: message,
