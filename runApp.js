@@ -17,16 +17,8 @@ try {
 
 const port = config.port || 3000;
 
-// Load commands from cmds folder
-const commandFiles = fs.readdirSync('./cmds').filter(file => file.endsWith('.js'));
-const commands = {};
-commandFiles.forEach(file => {
-    const command = require(`./cmds/${file}`);
-    commands[command.name] = command;
-});
-
-// Object to track active commands per user
-let activeCommands = {};
+// Object to track active Gemini sessions per user
+let activeGeminiSessions = {};
 
 login({ appState }, (err, api) => {
     if (err) return console.error(err);
@@ -44,51 +36,32 @@ login({ appState }, (err, api) => {
         const senderId = event.senderID;
         const attachments = event.attachments || [];
 
-        // Check if the user has an active command
-        if (activeCommands[senderId]) {
-            const activeCommand = activeCommands[senderId];
+        // Check if user has an active Gemini session
+        if (activeGeminiSessions[senderId]) {
+            const previousContext = activeGeminiSessions[senderId];
             if (message.toLowerCase() === "stop") {
-                // Disable the active command for the user
-                delete activeCommands[senderId];
-                api.sendMessage(`La commande ${activeCommand} a été désactivée avec succès.`, event.threadID);
+                // End the Gemini session for the user
+                delete activeGeminiSessions[senderId];
+                api.sendMessage("Discussion avec Gemini terminée.", event.threadID);
                 return;
-            } else if (commands[activeCommand]) {
-                // Continue conversation with active command
-                return commands[activeCommand].execute(api, event, [message]);
             }
-        }
 
-        // Check for a command with prefix
-        if (message.startsWith(prefix)) {
-            const args = message.slice(prefix.length).split(/ +/);
-            const commandName = args.shift().toLowerCase();
-
-            if (commands[commandName]) {
-                if (commandName === "help") {
-                    // Help command doesn't need a stop command
-                    return commands[commandName].execute(api, event, args);
-                }
-
-                // Set active command for the user
-                activeCommands[senderId] = commandName;
-
-                // Execute the selected command
-                return commands[commandName].execute(api, event, args);
-            } else {
-                // If the command does not exist, let Gemini handle it
-                api.sendMessage("⏳ Veuillez patienter un instant pendant que Bruno traite votre demande...", event.threadID);
-                axios.post('https://gemini-sary-prompt-espa-vercel-api.vercel.app/api/gemini', {
-                    prompt: message,
-                    customId: senderId
-                }).then(response => {
-                    api.sendMessage(response.data.message, event.threadID);
-                }).catch(err => console.error("API error:", err));
-            }
+            // Continue the conversation with Gemini
+            api.sendMessage("⏳ Continuation de la discussion en cours avec Gemini...", event.threadID);
+            return axios.post('https://gemini-sary-prompt-espa-vercel-api.vercel.app/api/gemini', {
+                prompt: message,
+                context: previousContext,
+                customId: senderId
+            }).then(response => {
+                // Update the session context
+                activeGeminiSessions[senderId] = response.data.context || previousContext;
+                api.sendMessage(response.data.message, event.threadID);
+            }).catch(err => console.error("API error:", err));
         }
 
         // If the message contains attachments, process with Gemini API
         if (attachments.length > 0 && attachments[0].type === 'photo') {
-            api.sendMessage("⏳💫 Veuillez patienter un instant pendant que Bruno analyse votre image...", event.threadID);
+            api.sendMessage("⏳💫 Veuillez patienter pendant que Gemini analyse votre image...", event.threadID);
 
             const imageUrl = attachments[0].url;
             axios.post('https://gemini-sary-prompt-espa-vercel-api.vercel.app/api/gemini', {
@@ -108,16 +81,20 @@ login({ appState }, (err, api) => {
                     customId: senderId
                 });
             }).then(response => {
+                // Save context for future discussions
+                activeGeminiSessions[senderId] = response.data.context || null;
                 api.sendMessage(response.data.message, event.threadID);
             }).catch(err => console.error("OCR/Response error:", err));
         } else if (!message.startsWith(prefix)) {
-            // If there's no command, fallback to Gemini API
-            api.sendMessage("⏳ Veuillez patienter un instant pendant que Bruno traite votre demande...", event.threadID);
+            // Handle general text with Gemini API
+            api.sendMessage("⏳ Veuillez patienter pendant que Gemini traite votre demande...", event.threadID);
 
             axios.post('https://gemini-sary-prompt-espa-vercel-api.vercel.app/api/gemini', {
                 prompt: message,
                 customId: senderId
             }).then(response => {
+                // Save context for future discussions
+                activeGeminiSessions[senderId] = response.data.context || null;
                 api.sendMessage(response.data.message, event.threadID);
             }).catch(err => console.error("API error:", err));
         }
